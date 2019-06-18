@@ -31,9 +31,9 @@ def carrier_get_trace_parent_mock():
         yield mock
 
 
-@pytest.mark.usefixtures('instrument_mock', 'apm_middleware')
+@pytest.mark.usefixtures('instrument_mock')
 class TestAPMPlugin:
-    @pytest.mark.usefixtures('carrier_get_trace_parent_mock')
+    @pytest.mark.usefixtures('carrier_get_trace_parent_mock', 'apm_middleware')
     def test_span_is_started_on_pre_publish(
             self, publisher, start_active_span_mock):
         message = {'foo': 'bar'}
@@ -43,6 +43,7 @@ class TestAPMPlugin:
         start_active_span_mock.assert_called_with(
             topic, finish_on_close=False)
 
+    @pytest.mark.usefixtures('apm_middleware')
     def test_apm_tracer_id_is_injected_in_message_attributes_on_pre_publish(
             self, publisher):
         publisher.publish(
@@ -54,6 +55,7 @@ class TestAPMPlugin:
 
         assert ELASTIC_APM_TRACE_PARENT in call_args[1].keys()
 
+    @pytest.mark.usefixtures('apm_middleware')
     def test_message_is_published_even_when_apm_fails(
             self, instrument_mock, publisher):
         instrument_mock.side_effect = Exception('Something went wrong on APM')
@@ -64,3 +66,20 @@ class TestAPMPlugin:
         )
 
         assert publisher._client.publish.called_once()
+
+    def test_message_is_published_even_when_apm_fails_setting_up_APM(
+            self, publisher, config):
+        with patch('rele.contrib.apm_middleware.Client.__init__') as client_mock:
+            client_mock.side_effect = Exception(
+                'Something went wrong initializing APM'
+            )
+            config.middleware = ['rele.contrib.APMMiddleware']
+            register_middleware(config)
+
+            publisher.publish(
+                topic='order-cancelled',
+                data={'foo': 'bar'},
+                myattr='hello'
+            )
+
+            assert publisher._client.publish.called_once()
