@@ -9,7 +9,7 @@ from opentracing import Format
 from rele.middleware import BaseMiddleware
 
 ELASTIC_APM_TRACE_PARENT = 'elastic-apm-traceparent'
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Carrier(dict):
@@ -27,7 +27,7 @@ class APMMiddleware(BaseMiddleware):
             self._tracer = Tracer(apm_client)
             self._carrier = Carrier()
         except Exception as e:
-            LOGGER.error(f'APM client could not be initialized. {e}')
+            logger.error(f'APM client could not be initialized. {e}')
 
     def pre_publish(self, topic, data, attrs):
         try:
@@ -35,7 +35,7 @@ class APMMiddleware(BaseMiddleware):
             scope = self._tracer.start_active_span(topic, finish_on_close=False)
             self._inject_trace_parent(attrs, scope)
         except Exception as e:
-            LOGGER.error(f'APM tracer could not start instrumentation. {e}')
+            logger.error(f'APM tracer could not start instrumentation. {e}')
 
     def _inject_trace_parent(self, attrs, scope):
         self._tracer.inject(span_context=scope.span.context,

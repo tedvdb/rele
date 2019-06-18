@@ -76,7 +76,7 @@ class TestAPMPlugin:
 
         assert publisher._client.publish.called_once()
 
-    def test_message_is_published_even_when_apm_fails_setting_up_APM(
+    def test_message_is_published_even_when_apm_fails_setting_up_apm(
             self, publisher, config):
         with patch('rele.contrib.apm_middleware.'
                    'Client.__init__') as client_mock:
@@ -94,13 +94,28 @@ class TestAPMPlugin:
 
             assert publisher._client.publish.called_once()
 
+    @pytest.mark.parametrize('blocking', (False, True, ))
     @pytest.mark.usefixtures('apm_middleware')
     def test_span_is_finished_after_message_is_published(
-            self, publisher, active_span_mock):
+            self, blocking, publisher, active_span_mock):
+        publisher.publish(
+            topic='order-cancelled',
+            data={'foo': 'bar'},
+            blocking=blocking,
+            myattr='hello'
+        )
+
+        active_span_mock.finish.assert_called()
+
+    def test_message_is_published_when_apm_fails_finishing_active_span(
+        self, publisher, active_span_mock):
+        active_span_mock.finish.side_effect = Exception(
+            "APM failed finishing the active span"
+        )
         publisher.publish(
             topic='order-cancelled',
             data={'foo': 'bar'},
             myattr='hello'
         )
 
-        active_span_mock.finish.assert_called()
+        assert publisher._client.publish.called_once()

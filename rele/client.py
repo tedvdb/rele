@@ -1,3 +1,4 @@
+from concurrent.futures import TimeoutError
 import json
 import logging
 import os
@@ -117,6 +118,15 @@ class Publisher:
             run_middleware_hook('post_publish', topic)
             return future
 
-        future.result(timeout=self._timeout)
+        try:
+            future.result(timeout=self._timeout)
+        except TimeoutError:
+            logger.warning(f'Rele got a timeout publishing message.', extra={
+                'project': self._gc_project_id,
+                'topic': topic,
+                'data': data,
+                'attrs': attrs
+            })
+
         run_middleware_hook('post_publish', topic)
         return future
