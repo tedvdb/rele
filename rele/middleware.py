@@ -35,7 +35,7 @@ class BaseMiddleware:
     def post_publish(self, topic):
         pass
 
-    def pre_process_message(self, subscription):
+    def pre_process_message(self, subscription, message):
         pass
 
     def post_process_message(self):

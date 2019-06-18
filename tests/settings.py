@@ -34,6 +34,7 @@ RELE = {
     'MIDDLEWARE': [
         'rele.contrib.LoggingMiddleware',
         'rele.contrib.DjangoDBMiddleware',
+        'rele.contrib.APMMiddleware',
     ],
 }
 
