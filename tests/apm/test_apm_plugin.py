@@ -1,7 +1,8 @@
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 import pytest
 
+from rele.contrib.apm_middleware import ELASTIC_APM_TRACE_PARENT
 from rele.middleware import register_middleware
 
 
@@ -38,5 +39,19 @@ class TestAPMPlugin:
         message = {'foo': 'bar'}
         topic = 'order-cancelled'
         publisher.publish(topic=topic, data=message, myattr='hello')
+
         start_active_span_mock.assert_called_with(
             topic, finish_on_close=False)
+
+    def test_apm_tracer_id_is_injected_in_message_attributes_on_pre_publish(
+            self, publisher):
+        publisher.publish(
+            topic='order-cancelled',
+            data={'foo': 'bar'},
+            myattr='hello'
+        )
+        call_args = publisher._client.publish.call_args
+
+        assert ELASTIC_APM_TRACE_PARENT in call_args[1].keys()
+
+

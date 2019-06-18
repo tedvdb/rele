@@ -108,6 +108,7 @@ class Publisher:
         """
 
         attrs['published_at'] = str(time.time())
+        # Maybe a message instance should be passed instead a bunch of arguments.
         run_middleware_hook('pre_publish', topic, data, attrs)
         payload = json.dumps(data, cls=encoders.JSONEncoder).encode('utf-8')
         topic_path = self._client.topic_path(self._gc_project_id, topic)

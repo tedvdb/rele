@@ -27,14 +27,13 @@ class APMMiddleware(BaseMiddleware):
     def pre_publish(self, topic, data, attrs):
         elasticapm.instrument()
         scope = self._tracer.start_active_span(topic, finish_on_close=False)
+        self._inject_trace_parent(attrs, scope)
+
+    def _inject_trace_parent(self, attrs, scope):
         self._tracer.inject(span_context=scope.span.context,
                             format=Format.TEXT_MAP,
                             carrier=self._carrier)
-        trace_parent = {
-            ELASTIC_APM_TRACE_PARENT: self._carrier.get_trace_parent()
-        }
-
-        return {**attrs, **trace_parent}
+        attrs[ELASTIC_APM_TRACE_PARENT] = self._carrier.get_trace_parent()
 
     def post_publish(self, topic):
         self._tracer.active_span.finish()
