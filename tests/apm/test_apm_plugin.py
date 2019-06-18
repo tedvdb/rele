@@ -54,4 +54,13 @@ class TestAPMPlugin:
 
         assert ELASTIC_APM_TRACE_PARENT in call_args[1].keys()
 
+    def test_message_is_published_even_when_apm_fails(
+            self, instrument_mock, publisher):
+        instrument_mock.side_effect = Exception('Something went wrong on APM')
+        publisher.publish(
+            topic='order-cancelled',
+            data={'foo': 'bar'},
+            myattr='hello'
+        )
 
+        assert publisher._client.publish.called_once()

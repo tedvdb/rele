@@ -1,4 +1,5 @@
 import json
+import logging
 
 import elasticapm
 from elasticapm import Client
@@ -8,6 +9,7 @@ from opentracing import Format
 from rele.middleware import BaseMiddleware
 
 ELASTIC_APM_TRACE_PARENT = 'elastic-apm-traceparent'
+LOGGER = logging.getLogger(__name__)
 
 
 class Carrier(dict):
@@ -20,14 +22,20 @@ class APMMiddleware(BaseMiddleware):
     _carrier = None
 
     def setup(self, config):
-        apm_client = Client({'SERVICE_NAME': config.gc_project_id})
-        self._tracer = Tracer(apm_client)
-        self._carrier = Carrier()
+        try:
+            apm_client = Client({'SERVICE_NAME': config.gc_project_id})
+            self._tracer = Tracer(apm_client)
+            self._carrier = Carrier()
+        except Exception as e:
+            LOGGER.error(f'APM client could not be initialized. {e}')
 
     def pre_publish(self, topic, data, attrs):
-        elasticapm.instrument()
-        scope = self._tracer.start_active_span(topic, finish_on_close=False)
-        self._inject_trace_parent(attrs, scope)
+        try:
+            elasticapm.instrument()
+            scope = self._tracer.start_active_span(topic, finish_on_close=False)
+            self._inject_trace_parent(attrs, scope)
+        except Exception as e:
+            LOGGER.error(f'APM tracer could not start instrumentation. {e}')
 
     def _inject_trace_parent(self, attrs, scope):
         self._tracer.inject(span_context=scope.span.context,
