@@ -44,7 +44,8 @@ class APMMiddleware(BaseMiddleware):
         attrs[ELASTIC_APM_TRACE_PARENT] = self._carrier.get_trace_parent()
 
     def post_publish(self, topic):
-        self._tracer.active_span.finish()
+        if self._tracer:
+            self._tracer.active_span.finish()
 
     def pre_process_message(self, subscription, message):
         elasticapm.instrument()

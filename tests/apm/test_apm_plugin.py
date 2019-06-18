@@ -1,6 +1,7 @@
-from unittest.mock import patch, ANY
+from unittest.mock import patch, ANY, Mock
 
 import pytest
+from elasticapm.traces import Span
 
 from rele.contrib.apm_middleware import ELASTIC_APM_TRACE_PARENT
 from rele.middleware import register_middleware
@@ -19,6 +20,13 @@ def start_active_span_mock():
 
 
 @pytest.fixture
+def active_span_mock():
+    with patch('rele.contrib.apm_middleware.Tracer.active_span') as mock:
+        mock.return_value = Mock(spec=Span)
+        yield mock
+
+
+@pytest.fixture
 def instrument_mock():
     with patch('rele.contrib.apm_middleware.elasticapm.instrument') as mock:
         yield mock
@@ -31,9 +39,10 @@ def carrier_get_trace_parent_mock():
         yield mock
 
 
-@pytest.mark.usefixtures('instrument_mock')
+@pytest.mark.usefixtures('instrument_mock', 'active_span_mock')
 class TestAPMPlugin:
-    @pytest.mark.usefixtures('carrier_get_trace_parent_mock', 'apm_middleware')
+    @pytest.mark.usefixtures(
+        'carrier_get_trace_parent_mock', 'apm_middleware')
     def test_span_is_started_on_pre_publish(
             self, publisher, start_active_span_mock):
         message = {'foo': 'bar'}
@@ -55,7 +64,7 @@ class TestAPMPlugin:
 
         assert ELASTIC_APM_TRACE_PARENT in call_args[1].keys()
 
-    @pytest.mark.usefixtures('apm_middleware')
+    @pytest.mark.usefixtures('apm_middleware', 'start_active_span_mock')
     def test_message_is_published_even_when_apm_fails(
             self, instrument_mock, publisher):
         instrument_mock.side_effect = Exception('Something went wrong on APM')
@@ -69,7 +78,8 @@ class TestAPMPlugin:
 
     def test_message_is_published_even_when_apm_fails_setting_up_APM(
             self, publisher, config):
-        with patch('rele.contrib.apm_middleware.Client.__init__') as client_mock:
+        with patch('rele.contrib.apm_middleware.'
+                   'Client.__init__') as client_mock:
             client_mock.side_effect = Exception(
                 'Something went wrong initializing APM'
             )
@@ -83,3 +93,14 @@ class TestAPMPlugin:
             )
 
             assert publisher._client.publish.called_once()
+
+    @pytest.mark.usefixtures('apm_middleware')
+    def test_span_is_finished_after_message_is_published(
+            self, publisher, active_span_mock):
+        publisher.publish(
+            topic='order-cancelled',
+            data={'foo': 'bar'},
+            myattr='hello'
+        )
+
+        active_span_mock.finish.assert_called()

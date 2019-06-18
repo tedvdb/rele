@@ -114,6 +114,7 @@ class Publisher:
         topic_path = self._client.topic_path(self._gc_project_id, topic)
         future = self._client.publish(topic_path, payload, **attrs)
         if not blocking:
+            run_middleware_hook('post_publish', topic)
             return future
 
         future.result(timeout=self._timeout)
