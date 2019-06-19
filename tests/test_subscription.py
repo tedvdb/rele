@@ -1,5 +1,4 @@
 import logging
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -79,16 +78,6 @@ class TestCallback:
         with patch('rele.contrib.django_db_middleware.db.'
                    'close_old_connections') as mock_old_connections:
             yield mock_old_connections
-
-    @pytest.fixture
-    def message_wrapper(self):
-        rele_message = pubsub_v1.types.PubsubMessage(
-            data=b'{"id": 123}',
-            attributes={'lang': 'es', 'published_at': str(time.time())},
-            message_id='1')
-
-        return pubsub_v1.subscriber.message.Message(
-            rele_message, 'ack-id', MagicMock())
 
     @pytest.fixture
     def message_wrapper_empty(self):

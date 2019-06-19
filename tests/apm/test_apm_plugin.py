@@ -3,8 +3,10 @@ from unittest.mock import patch, ANY, Mock
 import pytest
 from elasticapm.traces import Span
 
+from rele import Callback
 from rele.contrib.apm_middleware import ELASTIC_APM_TRACE_PARENT
 from rele.middleware import register_middleware
+from tests.test_worker import sub_stub
 
 
 @pytest.fixture()
@@ -27,6 +29,12 @@ def active_span_mock():
 
 
 @pytest.fixture
+def extract_mock():
+    with patch('rele.contrib.apm_middleware.Tracer.extract') as mock:
+        yield mock
+
+
+@pytest.fixture
 def instrument_mock():
     with patch('rele.contrib.apm_middleware.elasticapm.instrument') as mock:
         yield mock
@@ -37,6 +45,13 @@ def carrier_get_trace_parent_mock():
     with patch('rele.contrib.apm_middleware.Carrier.get_trace_parent') as mock:
         mock.return_value = '1234'
         yield mock
+
+
+@pytest.fixture
+def message_with_trace_parent(message_wrapper):
+    message_wrapper.attributes[ELASTIC_APM_TRACE_PARENT] = "trace-example-foo"
+    
+    return message_wrapper
 
 
 @pytest.mark.usefixtures('instrument_mock', 'active_span_mock')
@@ -119,3 +134,20 @@ class TestAPMPlugin:
         )
 
         assert publisher._client.publish.called_once()
+
+    @pytest.mark.usefixtures('apm_middleware', 'start_active_span_mock')
+    def test_instrument_is_started_before_processing_message(
+            self, message_with_trace_parent, instrument_mock):
+        callback = Callback(sub_stub)
+        callback(message_with_trace_parent)
+
+        instrument_mock.called_once()
+
+    @pytest.mark.usefixtures('apm_middleware', 'instrument_mock', 'start_active_span_mock')
+    def test_parent_trace_is_extracted_before_processing_message(
+            self, message_with_trace_parent, extract_mock):
+        callback = Callback(sub_stub)
+        callback(message_with_trace_parent)
+
+        assert ELASTIC_APM_TRACE_PARENT in extract_mock.call_args[0][1].keys()
+

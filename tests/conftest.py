@@ -1,10 +1,15 @@
+import logging
+import time
+
 import pytest
 import concurrent
 from unittest.mock import MagicMock, patch
+
+from google.cloud import pubsub_v1
 from google.cloud.pubsub_v1 import PublisherClient
 
 from rele.config import Config
-from rele import Publisher
+from rele import Publisher, sub
 from rele.client import Subscriber
 from rele.middleware import register_middleware
 
@@ -61,3 +66,14 @@ def time_mock(published_at):
 @pytest.fixture(autouse=True)
 def default_middleware(config):
     register_middleware(config=config)
+
+
+@pytest.fixture
+def message_wrapper():
+    rele_message = pubsub_v1.types.PubsubMessage(
+        data=b'{"id": 123}',
+        attributes={'lang': 'es', 'published_at': str(time.time())},
+        message_id='1')
+
+    return pubsub_v1.subscriber.message.Message(
+        rele_message, 'ack-id', MagicMock())

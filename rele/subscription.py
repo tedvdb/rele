@@ -50,8 +50,7 @@ class Callback:
         self._suffix = suffix
 
     def __call__(self, message):
-        print('0')
-        run_middleware_hook('pre_process_message', self._subscription)
+        run_middleware_hook('pre_process_message', self._subscription, message)
         start_time = time.time()
 
         data = json.loads(message.data.decode('utf-8'))

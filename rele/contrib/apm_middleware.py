@@ -31,7 +31,6 @@ class APMMiddleware(BaseMiddleware):
 
     def pre_publish(self, topic, data, attrs):
         try:
-            elasticapm.instrument()
             scope = self._tracer.start_active_span(topic, finish_on_close=False)
             self._inject_trace_parent(attrs, scope)
         except Exception as e:
@@ -48,7 +47,6 @@ class APMMiddleware(BaseMiddleware):
             self._tracer.active_span.finish()
 
     def pre_process_message(self, subscription, message):
-        elasticapm.instrument()
         trace_parent = {
             ELASTIC_APM_TRACE_PARENT: message.attributes.get(ELASTIC_APM_TRACE_PARENT)
         }
