@@ -2,6 +2,7 @@ from unittest.mock import patch, ANY, Mock
 
 import pytest
 from elasticapm.traces import Span
+from opentracing import SpanContext
 
 from rele import Callback
 from rele.contrib.apm_middleware import ELASTIC_APM_TRACE_PARENT
@@ -151,3 +152,18 @@ class TestAPMPlugin:
 
         assert ELASTIC_APM_TRACE_PARENT in extract_mock.call_args[0][1].keys()
 
+    @pytest.mark.usefixtures('apm_middleware', 'start_active_span_mock')
+    def test_span_as_child_of_parent_context_is_started_before_processing_message(
+            self, message_with_trace_parent, extract_mock,
+            start_active_span_mock):
+        parent_context_mock = Mock(spec=SpanContext)
+        extract_mock.return_value = parent_context_mock
+
+        callback = Callback(sub_stub)
+        callback(message_with_trace_parent)
+
+        start_active_span_mock.assert_called_with(
+            ANY,
+            child_of=parent_context_mock,
+            finish_on_close=False
+        )
