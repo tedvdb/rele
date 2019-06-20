@@ -10,6 +10,11 @@ from rele import Callback, Subscription, sub
 logger = logging.getLogger(__name__)
 
 
+@pytest.fixture
+def caplog_info(caplog):
+    caplog.set_level(logging.INFO)
+    return caplog
+
 @sub(topic='some-cool-topic', prefix='rele')
 def sub_stub(data, **kwargs):
     logger.info(f'I am a task doing stuff with ID {data["id"]} '
@@ -38,6 +43,7 @@ def sub_process_landscape_photos(data, **kwargs):
     return f'Received a photo of type {kwargs.get("type")}'
 
 
+@pytest.mark.usefixtures('caplog_info')
 class TestSubscription:
 
     def test_subs_return_subscription_objects(self):
@@ -70,7 +76,7 @@ class TestSubscription:
 
         assert response is None
 
-
+@pytest.mark.usefixtures('caplog_info')
 class TestCallback:
 
     @pytest.fixture(autouse=True)
