@@ -167,3 +167,15 @@ class TestAPMPlugin:
             child_of=parent_context_mock,
             finish_on_close=False
         )
+
+    @pytest.mark.usefixtures('apm_middleware', 'instrument_mock')
+    def test_attributes_are_included_as_tag_to_the_span(
+            self, message_with_trace_parent, start_active_span_mock):
+        message_with_trace_parent.attributes['an_extra_attribute'] = 'foo'
+        callback = Callback(sub_stub)
+        callback(message_with_trace_parent)
+
+        start_active_span_mock().span.set_tag.assert_any_call(ELASTIC_APM_TRACE_PARENT, ANY)
+        start_active_span_mock().span.set_tag.assert_any_call('lang', 'es')
+        start_active_span_mock().span.set_tag.assert_any_call('published_at', ANY)
+        start_active_span_mock().span.set_tag.assert_any_call('an_extra_attribute', 'foo')

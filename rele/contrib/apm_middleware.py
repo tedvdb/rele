@@ -1,4 +1,3 @@
-import json
 import logging
 
 import elasticapm
@@ -54,15 +53,12 @@ class APMMiddleware(BaseMiddleware):
             Format.TEXT_MAP,
             trace_parent
         )
-        data = json.loads(message.data.decode('utf-8'))
+
         span_context = self._tracer.start_active_span(
             str(subscription),
             child_of=parent_span_context,
             finish_on_close=False
         )
-        if type(data) is dict:
-            for key, value in data.items():
-                span_context.span.set_tag(f'data-{key}', value)
 
         for key, value in message.attributes.items():
             span_context.span.set_tag(key, value)
