@@ -8,6 +8,10 @@ API Reference
 Clients
 -------
 
+Clients are generally responsible for wrapping the core Google Python library functionality.
+For example, the Subscriber is responsible for creating the subscription on Google PubSub.
+Likewise, the Publisher client handles send the message to Google PubSub.
+
 .. autoclass:: rele.client.Publisher
    :members:
 

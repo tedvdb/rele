@@ -12,6 +12,7 @@ from rele.client import Subscriber
 from rele.config import Config
 from rele.middleware import register_middleware
 
+pytest_plugins = ["pytester"]
 
 @pytest.fixture
 def project_id():
