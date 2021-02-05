@@ -1,6 +1,7 @@
 import logging
 import signal
 import sys
+import threading
 import time
 from concurrent import futures
 
@@ -31,7 +32,7 @@ class Worker:
         threads_per_subscription=None,
     ):
         self._subscriber = Subscriber(gc_project_id, credentials, default_ack_deadline)
-        self._futures = []
+        self._futures = {}
         self._subscriptions = subscriptions
         self.threads_per_subscription = threads_per_subscription
 
@@ -63,12 +64,10 @@ class Worker:
                 max_workers=self.threads_per_subscription, **executor_kwargs
             )
             scheduler = ThreadScheduler(executor=executor)
-            self._futures.append(
-                self._subscriber.consume(
-                    subscription_name=subscription.name,
-                    callback=Callback(subscription),
-                    scheduler=scheduler,
-                )
+            self._futures[subscription.name] = self._subscriber.consume(
+                subscription_name=subscription.name,
+                callback=Callback(subscription),
+                scheduler=scheduler,
             )
         run_middleware_hook("post_worker_start")
 
@@ -99,7 +98,7 @@ class Worker:
         :param frame: Needed for `signal.signal <https://docs.python.org/3/library/signal.html#signal.signal>`_  # noqa
         """
         run_middleware_hook("pre_worker_stop", self._subscriptions)
-        for future in self._futures:
+        for future in self._futures.values():
             future.cancel()
 
         run_middleware_hook("post_worker_stop")
@@ -108,6 +107,31 @@ class Worker:
     def _wait_forever(self, sleep_interval):
         logger.info("Consuming subscriptions...")
         while True:
+            for subscription in self._subscriptions:
+                print('checking subscription')
+                if subscription.reset():
+                    for thread in threading.enumerate():
+                        print(f'BEFORE: {thread.name}')
+                    executor_kwargs = {
+                        "thread_name_prefix": "ThreadPoolExecutor-ThreadScheduler"
+                    }
+                    executor = futures.ThreadPoolExecutor(
+                        max_workers=self.threads_per_subscription, **executor_kwargs
+                    )
+                    scheduler = ThreadScheduler(executor=executor)
+                    self._futures[subscription.name].cancel()
+                    self._futures[subscription.name] = self._subscriber.consume(
+                        subscription_name=subscription.name,
+                        callback=Callback(subscription),
+                        scheduler=scheduler,
+                    )
+                    subscription.reset_call_count()
+                    print('restarted subscription')
+                    for thread in threading.enumerate():
+                        print(f'AFTER: {thread.name}')
+
+
+
             time.sleep(sleep_interval)
 
 

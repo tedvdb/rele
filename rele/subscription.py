@@ -40,6 +40,7 @@ class Subscription:
         self._prefix = prefix
         self._suffix = suffix
         self._filters = self._init_filters(filter_by)
+        self.call_count = 1
 
     def _init_filters(self, filter_by):
         if filter_by and not (
@@ -77,6 +78,12 @@ class Subscription:
     def set_filters(self, filter_by):
         self._filters = filter_by
 
+    def reset_call_count(self):
+        self.call_count = 1
+
+    def reset(self):
+        return self.call_count % 3 == 0
+
     def __call__(self, data, **kwargs):
         if "published_at" in kwargs:
             kwargs["published_at"] = float(kwargs["published_at"])
@@ -84,7 +91,9 @@ class Subscription:
         if self._any_filter_returns_false(kwargs):
             return
 
-        return self._func(data, **kwargs)
+        result = self._func(data, **kwargs)
+        self.call_count += 1
+        return result
 
     def __str__(self):
         return f"{self.name} - {self._func.__name__}"
