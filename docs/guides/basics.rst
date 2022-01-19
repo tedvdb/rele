@@ -26,6 +26,8 @@ To configure Relé, our settings may look something like:
 
     RELE = {
         'GC_CREDENTIALS_PATH': 'credentials.json',
+        # Or:
+        'GC_CREDENTIALS_JSON': '{ "type": "service_account", "project_id": [...] }',
     }
 
 .. code:: python

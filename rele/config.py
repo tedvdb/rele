@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import warnings
 
@@ -23,6 +24,7 @@ class Config:
 
     def __init__(self, setting):
         self.gc_credentials_path = setting.get("GC_CREDENTIALS_PATH")
+        self.gc_credentials_json = setting.get("GC_CREDENTIALS_JSON")
         self.app_name = setting.get("APP_NAME")
         self.sub_prefix = setting.get("SUB_PREFIX")
         self.middleware = setting.get("MIDDLEWARE", default_middleware)
@@ -47,6 +49,10 @@ class Config:
         if self.gc_credentials_path:
             self._credentials = service_account.Credentials.from_service_account_file(
                 self.gc_credentials_path
+            )
+        elif self.gc_crentials_json:
+            self._credentials = service_account.Credentials.from_service_account_info(
+                json.loads(self.gc_credentials_json)
             )
         else:
             credentials, __ = get_google_defaults()
